@@ -110,7 +110,7 @@
         html: `<div class="pin" style="background:${color}">${text}</div>`});
     }
 
-    // Build popup content with textContent so station names are never parsed as HTML.
+    // textContent avoids HTML injection.
     function popup(lines) {
       const div = document.createElement('div');
       lines.forEach((line, i) => {
@@ -201,7 +201,7 @@
       plan($('start').value, $('finish').value);
     });
 
-    // Shareable links: /map/?start=...&finish=...
+    // Load trip from URL.
     const qs = new URLSearchParams(location.search);
     if (qs.get('start') && qs.get('finish')) {
       $('start').value = qs.get('start');

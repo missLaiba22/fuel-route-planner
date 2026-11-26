@@ -181,8 +181,7 @@ class PlanFuelStopsTests(SimpleTestCase):
         stations = [S(120, 3.50), S(300, 3.10), S(450, 3.80), S(620, 2.90), S(880, 3.40)]
         plan = plan_fuel_stops(stations, total_miles=1000, mpg=10, tank_range_miles=500)
         bought = [(s.mile_marker, round(s.gallons, 2)) for s in plan.stops]
-        # Full tank lasts to mile 500. At B (arrive with 200 mi left) buy 120 mi
-        # to reach D. At D buy 380 mi to finish.
+        # At B buy 120 mi to reach D; at D buy 380 mi to finish.
         self.assertEqual(bought, [(300, 12.0), (620, 38.0)])
         self.assertAlmostEqual(plan.total_cost, 12 * 3.10 + 38 * 2.90)
         self.assertAlmostEqual(plan.total_gallons, 50)
@@ -190,8 +189,7 @@ class PlanFuelStopsTests(SimpleTestCase):
     def test_fills_up_when_nothing_cheaper_ahead(self):
         stations = [S(400, 2.50), S(800, 4.00), S(850, 3.00)]
         plan = plan_fuel_stops(stations, total_miles=1200, tank_range_miles=500, mpg=10)
-        # At mile 400 nothing within 500 miles is cheaper: fill up (400 mi of fuel),
-        # then at mile 850 buy just enough to finish (350 mi - 50 mi left).
+        # Fill up at mile 400, then buy just enough at mile 850.
         self.assertEqual([(s.mile_marker, round(s.gallons, 2)) for s in plan.stops],
                          [(400, 40.0), (850, 30.0)])
 
@@ -202,8 +200,7 @@ class PlanFuelStopsTests(SimpleTestCase):
         self.assertAlmostEqual(plan.total_cost, 30 * 3 + 30 * 2)
 
     def test_stop_penalty_skips_tiny_savings(self):
-        # Topping up at mile 100 (1 cent cheaper) saves 10 cents in total,
-        # but costs an extra stop.
+        # An extra stop at mile 100 saves only 10 cents.
         stations = [S(100, 2.99), S(450, 3.00)]
         cheapest = plan_fuel_stops(stations, total_miles=900, stop_penalty=0)
         self.assertEqual([s.mile_marker for s in cheapest.stops], [100, 450])

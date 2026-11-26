@@ -1,29 +1,7 @@
-"""Choose where to fuel up, and how much to buy, along a route.
+"""Pick fuel stops minimising: fuel cost + stop_penalty per stop.
 
-Goal: minimise   fuel cost + stop_penalty x number_of_stops
-
-The pure-cheapest plan (stop_penalty=0) often makes many tiny stops to save a
-few cents per gallon. A small per-stop penalty, standing in for the time and
-hassle of pulling off the highway, gives a few large, sensible stops. The
-penalty only steers the choice; the cost we report is real money for fuel.
-
-Method: dynamic programming over (station, reach), where
-    reach = mile marker + fuel in the tank (in miles)
-is "how far down the road the truck can get". Driving does not change reach,
-only buying fuel does, which makes each step a simple array update:
-
-    for each station, in route order:
-        states that cannot reach this station are dropped
-        for every reach t we could top up to here (up to a full tank):
-            cost[t] = min(skip the station:  cost[t],
-                          stop and buy:     min over r <= t of
-                                            cost[r] + (t - r) * price_per_mile
-                                            + stop_penalty)
-
-The inner "min over r <= t" is a running minimum, so each station costs one
-vectorised numpy pass over at most `tank_range_miles` values. Reach is tracked
-in whole miles, so a plan can buy up to a mile of fuel more than strictly
-needed (cents).
+Dynamic programming over (station, reach), where reach = mile marker + fuel
+in miles. The penalty only guides the choice; it is not in the reported cost.
 """
 
 import math
@@ -58,17 +36,7 @@ class FuelPlan:
 
 def plan_fuel_stops(stations, total_miles, tank_range_miles=500.0, mpg=10.0,
                     start_fuel_miles=None, stop_penalty=0.0):
-    """Return the FuelPlan minimising fuel cost + stop_penalty per stop.
-
-    stations          objects with .mile_marker (miles from start) and .price ($/gal)
-    total_miles       route length
-    tank_range_miles  distance a full tank covers
-    mpg               fuel economy (gallons = miles / mpg)
-    start_fuel_miles  range in the tank at departure (default: full tank)
-    stop_penalty      dollars charged (for planning only) per fuel stop
-
-    Raises NoFeasiblePlanError if a gap between fuel options is too large.
-    """
+    """Return the cheapest FuelPlan. Starts with a full tank unless start_fuel_miles is set."""
     if tank_range_miles < 1 or mpg <= 0 or stop_penalty < 0:
         raise ValueError('tank_range_miles must be >= 1, mpg > 0, stop_penalty >= 0.')
     tank = int(math.floor(tank_range_miles + EPSILON))
@@ -80,15 +48,15 @@ def plan_fuel_stops(stations, total_miles, tank_range_miles=500.0, mpg=10.0,
                       key=lambda s: s.mile_marker)
     finish = int(math.ceil(total_miles - EPSILON))
 
-    # cost[r] = cheapest way to be here with reach r (absolute mile).
+    # cost[r] = cheapest cost so far with reach r.
     size = finish + tank + 2
     cost = np.full(size, np.inf)
     cost[int(math.floor(start_fuel + EPSILON))] = 0.0
-    decisions = []  # per station: (lo, source reach for each t in window, or -1)
+    decisions = []  # per station: (lo, reach before buying, or -1)
 
     for station in stations:
         lo = int(math.ceil(station.mile_marker - EPSILON))
-        cost[:lo] = np.inf                       # could not reach this station
+        cost[:lo] = np.inf  # can't reach this station
         if not np.isfinite(cost[lo:]).any():
             raise NoFeasiblePlanError(_explain_gap(stations, total_miles, tank_range_miles,
                                                    start_fuel))
@@ -112,7 +80,7 @@ def plan_fuel_stops(stations, total_miles, tank_range_miles=500.0, mpg=10.0,
         raise NoFeasiblePlanError(_explain_gap(stations, total_miles, tank_range_miles,
                                                start_fuel))
 
-    # Walk the decisions backwards to recover where fuel was bought.
+    # Walk back through decisions to find the purchases.
     reach = finish + int(np.argmin(arrived))
     purchases = []
     for station, (lo, source) in zip(reversed(stations), reversed(decisions)):

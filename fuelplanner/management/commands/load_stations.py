@@ -1,14 +1,6 @@
-"""One-time data load: US cities + fuel stations with coordinates.
+"""Load US cities and fuel stations, giving each station its city's coordinates.
 
-    python manage.py load_stations
-
-The fuel price CSV has no coordinates, only "City, State". Rather than
-geocode ~7,500 stations through an external API (slow, rate limited), we
-match each station's city against a free offline US cities dataset.
-Coordinates are therefore city-level, which is accurate enough to decide
-whether a station lies along a long-distance route.
-
-The command is idempotent: it replaces existing data on every run.
+Usage: python manage.py load_stations   (safe to re-run; replaces existing data)
 """
 
 import csv
@@ -21,7 +13,7 @@ from django.db import transaction
 from fuelplanner.models import City, FuelStation
 from fuelplanner.services.stations import get_station_index
 
-# Canadian provinces/territories in the price list. The assignment is USA only.
+# Canadian provinces (USA only).
 NON_US_STATES = {'AB', 'BC', 'MB', 'NB', 'NL', 'NS', 'NT', 'NU', 'ON', 'PE', 'QC', 'SK', 'YT'}
 
 # A few small US places missing from the cities dataset.
@@ -62,8 +54,7 @@ class Command(BaseCommand):
             )
             FuelStation.objects.bulk_create(stations, batch_size=2000)
 
-        # Drop this process's in-memory station index. A running server keeps
-        # its own copy, so restart it after reloading data.
+        # Running servers keep their own copy: restart them after reloading.
         get_station_index.cache_clear()
 
         self.stdout.write(self.style.SUCCESS(
@@ -81,7 +72,6 @@ class Command(BaseCommand):
             with open(path, encoding='utf-8') as f:
                 for row in csv.DictReader(f):
                     key = (city_key(row['CITY']), row['STATE_CODE'].strip())
-                    # First occurrence wins (the dataset has rare duplicates).
                     cities.setdefault(key, (row['CITY'].strip(),
                                             float(row['LATITUDE']),
                                             float(row['LONGITUDE'])))
@@ -93,12 +83,7 @@ class Command(BaseCommand):
         return cities
 
     def read_stations(self, path, cities):
-        """Parse the price CSV into FuelStation objects (unsaved).
-
-        The same station ID can appear several times with different prices
-        (different supply contracts / rack IDs). We keep one record per
-        station, at its lowest listed price.
-        """
+        """Parse the price CSV. Duplicate station IDs keep their lowest price."""
         best = {}
         skipped_non_us = 0
         unmatched = set()

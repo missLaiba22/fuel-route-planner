@@ -14,11 +14,7 @@ from .services.routing import RoutingError
 
 
 class RoutePlanView(APIView):
-    """Plan a route with cost-effective fuel stops.
-
-    GET  /api/route/?start=Chicago, IL&finish=Denver, CO
-    POST /api/route/  {"start": "Chicago, IL", "finish": "Denver, CO"}
-    """
+    """GET ?start=&finish= or POST {"start", "finish"}."""
 
     def get(self, request):
         return self._plan(request.query_params)
@@ -50,6 +46,6 @@ def _error(message, code):
 
 
 class MapView(TemplateView):
-    """Interactive map that calls the API and draws the route and fuel stops."""
+    """Leaflet map page that calls the API."""
 
     template_name = 'fuelplanner/map.html'

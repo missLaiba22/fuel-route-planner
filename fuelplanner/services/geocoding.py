@@ -1,13 +1,4 @@
-"""Turn user input ("Chicago, IL") into coordinates using the local City table.
-
-No external API is called, so geocoding the start and finish costs nothing
-and leaves the single external call for routing.
-
-Accepted formats:
-    "Chicago, IL"            city + state code
-    "Chicago, Illinois"      city + full state name
-    "41.8781,-87.6298"       raw "lat,lon"
-"""
+"""Resolve "Chicago, IL", "Chicago, Illinois" or "lat,lon" via the local City table."""
 
 import re
 from dataclasses import dataclass
@@ -29,7 +20,7 @@ US_STATES = {
 }
 STATE_CODES = set(US_STATES.values())
 
-# Rough bounding box of the contiguous USA (routes must be drivable).
+# Contiguous USA bounding box.
 US_LAT_RANGE = (24.0, 50.0)
 US_LON_RANGE = (-125.0, -66.0)
 

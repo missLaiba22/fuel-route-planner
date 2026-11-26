@@ -1,8 +1,4 @@
-"""Driving route between two points, via the free OSRM routing API.
-
-This is the ONLY external API call made per request. Results are cached,
-so repeating the same trip makes zero external calls.
-"""
+"""Driving route via the free OSRM API (the only external call; cached)."""
 
 from dataclasses import dataclass
 
@@ -21,15 +17,12 @@ class RoutingError(Exception):
 class Route:
     distance_miles: float
     duration_hours: float
-    # List of [longitude, latitude] pairs (GeoJSON order) along the road.
+    # [lon, lat] pairs along the road.
     coordinates: list
 
 
 def get_route(start, finish):
-    """Return (Route, api_calls_made) for driving between two Locations.
-
-    api_calls_made is 1 when OSRM was called, 0 when served from cache.
-    """
+    """Return (route, api_calls): 1 if OSRM was called, 0 if cached."""
     cache_key = 'route:{:.5f},{:.5f}:{:.5f},{:.5f}'.format(
         start.latitude, start.longitude, finish.latitude, finish.longitude)
     route = cache.get(cache_key)

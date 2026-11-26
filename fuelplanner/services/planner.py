@@ -1,7 +1,4 @@
-"""Ties the pieces together: locations -> route -> nearby stations -> fuel plan.
-
-Returns a plain dict ready to be serialised as the API response.
-"""
+"""Locations -> route -> nearby stations -> fuel plan, as an API response dict."""
 
 import time
 
@@ -12,8 +9,7 @@ from .optimizer import plan_fuel_stops
 from .routing import get_route
 from .stations import find_stations_along_route, resample_route
 
-# Spacing of the route line returned to clients. The full OSRM geometry can be
-# tens of thousands of points; one point every mile is plenty to draw a map.
+# Returned route line: one point per mile is enough for a map.
 RESPONSE_GEOMETRY_SPACING_MILES = 1.0
 
 
@@ -94,7 +90,7 @@ def _point(lon, lat, properties):
 
 
 def _feature_collection(start, finish, line, stops):
-    """Route + markers as GeoJSON (drop it into geojson.io to view)."""
+    """Route and markers as GeoJSON."""
     features = [
         {'type': 'Feature',
          'geometry': {'type': 'LineString', 'coordinates': line},
